@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GranBio — Webdoor</title>
+<style>
+
+/* ================================================================
+   TOKENS
+   ================================================================ */
+:root {
+  --principal-blue: #215578;
+  --turquoise:      #0089B2;
+  --green-mid:      #00B08D;
+  --green-light:    #88C440;
+  --orange:         #E7812E;
+  --white:          #ffffff;
+  --grad-brand:     linear-gradient(to right, #0089B2 0%, #00B08D 47.11%, #88C440 99.43%);
+  --grad-arrow:     linear-gradient(to right, #88C440 0.57%, #00B08D 52.89%, #0089B2 100%);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #000; }
+
+
+/* ================================================================
+   WEBDOOR CONTAINER
+   ================================================================ */
+.webdoor {
+  position: relative;
+  width: 100%;
+  height: 900px;
+  overflow: hidden;
+  isolation: isolate;
+}
+@media (max-width: 900px)  { .webdoor { height: 700px; } }
+@media (max-width: 480px)  { .webdoor { height: 552px; } }
+
+
+/* ================================================================
+   CAMADA 1 — DEGRADÊ COLORIDO
+   Fornece a cor quando o vídeo usa mix-blend-mode: luminosity.
+   Trocar este gradiente muda a paleta do módulo inteiro.
+   ================================================================ */
+.webdoor__gradient-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(115deg, var(--turquoise) 0%, var(--green-mid) 47%, var(--green-light) 99%);
+}
+
+
+/* ================================================================
+   CAMADA 2 — VÍDEO (mix-blend-mode: luminosity)
+   Fornece o brilho/contraste. A cor vem da Camada 1.
+   Para inserir o vídeo: troque o src do <source> abaixo.
+   ================================================================ */
+.webdoor__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  z-index: 2;
+  mix-blend-mode: luminosity;
+}
+
+
+/* ================================================================
+   CAMADA 3 — SHADOWS
+   Gradientes escuros para garantir legibilidade do texto.
+   ================================================================ */
+.webdoor__shadow {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background:
+    linear-gradient(to right, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.20) 55%, rgba(0,0,0,0.00) 100%),
+    linear-gradient(to top,   rgba(0,0,0,0.50) 0%, rgba(0,0,0,0.00) 55%);
+}
+
+
+/* ================================================================
+   CAMADA 4 — GRAFISMO SVG (arco)
+
+   DESKTOP + TABLET (>480px):
+     width:100% + preserveAspectRatio="none" no SVG fazem o arco
+     esticar horizontalmente para cobrir a viewport inteira.
+     height em % mantém a proporção vertical do design.
+
+   MOBILE (≤480px):
+     Container fixo 1440×736px ancorado em top:0 left:0.
+     O overflow:hidden do .webdoor corta o lado direito naturalmente,
+     reproduzindo exatamente o frame 360px do Figma — o arco não é
+     redimensionado nem achatado, apenas recortado pela viewport.
+   ================================================================ */
+.webdoor__graphic {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 81.78%; /* 736 / 900 — proporção Figma desktop */
+  z-index: 4;
+  pointer-events: none;
+}
+
+.webdoor__graphic svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+@media (max-width: 900px) {
+  .webdoor__graphic { height: 75%; }
+}
+
+@media (max-width: 480px) {
+  /* Dimensões reais do design: corte por overflow, não redimensionamento */
+  .webdoor__graphic     { width: 1440px; height: 736px; }
+  .webdoor__graphic svg { width: 1440px; height: 736px; }
+}
+
+
+/* ================================================================
+   SLIDES
+   ================================================================ */
+.webdoor__slide {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 0 64px 96px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 800ms ease;
+}
+.webdoor__slide.is-active {
+  opacity: 1;
+  pointer-events: auto;
+}
+@media (max-width: 900px) { .webdoor__slide { padding: 0 40px 72px; } }
+@media (max-width: 480px) { .webdoor__slide { padding: 0 32px 32px; } }
+
+
+/* ================================================================
+   CONTEÚDO DO SLIDE
+   ================================================================ */
+/* tag: overflow:clip exato do Figma, altura e padding fixos por breakpoint */
+.slide__tag {
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;           /* overflow-clip do Figma */
+  padding: 2px 18px 0;        /* pt:2px px:18px — desktop */
+  height: 32px;
+  border: 1px solid var(--green-light);
+  border-radius: 32px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--white);
+  margin-bottom: 40px;
+  width: fit-content;
+  white-space: nowrap;
+}
+
+.slide__title {
+  font-size: 80px;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 40px;
+}
+
+.slide__title-gradient {
+  background: var(--grad-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  display: block;
+}
+
+.slide__title-orange {
+  color: var(--orange);
+  font-style: italic;
+  display: block;
+}
+
+.slide__desc {
+  font-size: 16px;
+  line-height: 1.6;
+  max-width: 900px;
+  color: var(--white);
+  margin-bottom: 56px;
+}
+
+@media (max-width: 900px) {
+  .slide__tag   { height: 28px; font-size: 11px; padding: 2px 16px 0; margin-bottom: 28px; }
+  .slide__title { font-size: 56px; margin-bottom: 28px; }
+  .slide__desc  { font-size: 14px; margin-bottom: 40px; }
+}
+@media (max-width: 480px) {
+  /* Mobile 360px — valores exatos do Figma: h:24px pt:1px px:12px fs:10px */
+  .slide__tag   { height: 24px; font-size: 10px; padding: 1px 12px 0; margin-bottom: 24px; }
+  .slide__title { font-size: 40px; margin-bottom: 18px; }
+  .slide__desc  { font-size: 12px; line-height: 1.4; margin-bottom: 32px; }
+}
+
+
+/* ================================================================
+   CTAs + CONTROLS
+   ================================================================ */
+.slide__bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.slide__ctas {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 900px) { .slide__ctas .btn:nth-child(3) { display: none; } }
+@media (max-width: 480px) {
+  .slide__ctas .btn:nth-child(2),
+  .slide__ctas .btn:nth-child(3) { display: none; }
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  height: 48px;
+  padding: 0 5px 0 18px;
+  background: var(--white);
+  border: 1.5px solid rgba(0,12,19,0.2);
+  border-radius: 32px;
+  color: var(--principal-blue);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  flex-shrink: 0;
+  transition: opacity 0.2s;
+}
+.btn:hover { opacity: 0.88; }
+
+/* Ícone de seta extraído do CTAs___Controls.svg */
+.btn__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--grad-arrow);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn__icon svg { width: 16px; height: 16px; }
+
+@media (max-width: 480px) {
+  .btn        { height: 40px; font-size: 12px; gap: 10px; padding: 0 4px 0 14px; border-radius: 25.6px; }
+  .btn__icon  { width: 32px; height: 32px; }
+}
+@media (min-width: 481px) and (max-width: 900px) {
+  .btn        { height: 44px; font-size: 13px; }
+  .btn__icon  { width: 36px; height: 36px; }
+}
+
+/* Botões prev/next — extraídos do CTAs___Controls.svg */
+.controls { display: flex; gap: 12px; flex-shrink: 0; }
+@media (max-width: 480px) { .controls { gap: 4px; } }
+
+.ctrl {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: var(--white);
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: opacity 0.2s;
+}
+.ctrl:hover { opacity: 0.85; }
+.ctrl svg   { width: 14px; height: 14px; overflow: visible; }
+
+@media (max-width: 480px)                          { .ctrl { width: 40px; height: 40px; } }
+@media (min-width: 481px) and (max-width: 900px)   { .ctrl { width: 44px; height: 44px; } }
+
+
+/* ================================================================
+   SEEKBAR / PROGRESS TIMER
+   ================================================================ */
+@keyframes seekProgress {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+.seekbar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  z-index: 6;
+  display: flex;
+  gap: 24px;
+  padding: 0 66px 40px;
+  pointer-events: none;
+}
+@media (max-width: 900px) { .seekbar { padding: 0 40px 32px; gap: 16px; } }
+@media (max-width: 480px) {
+  .seekbar { padding: 0 30px 20px; gap: 12px; justify-content: center; }
+}
+
+.seekbar__col {
+  flex: 1;
+  position: relative;
+  height: 3px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+@media (max-width: 480px) { .seekbar__col { flex: none; width: 92px; } }
+
+.seekbar__track {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.35);
+  border-radius: 3px;
+}
+
+.seekbar__fill {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 3px;
+  transform-origin: left center;
+  transform: scaleX(0);
+  background: linear-gradient(to right, #0089B2 0%, #00B08D 47.11%, #88C440 99.43%);
+}
+
+/* Slide ativo: keyframe com duração em ms (hardcoded — funciona em file://) */
+.seekbar__col.is-active .seekbar__fill {
+  animation: seekProgress 6000ms linear forwards;
+}
+
+/* Slides passados: fill completo sem animação */
+.seekbar__col.is-done .seekbar__fill {
+  transform: scaleX(1);
+  animation: none;
+}
+
+/* Slides futuros: zerado */
+.seekbar__col.is-pending .seekbar__fill {
+  transform: scaleX(0);
+  animation: none;
+}
+
+
+/* ================================================================
+   PAINEL DEV (remover em produção)
+   ================================================================ */
+.dpbtn {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.2);
+  color: white;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  text-align: left;
+  font-family: -apple-system, sans-serif;
+  transition: background .15s;
+}
+.dpbtn:hover  { background: rgba(255,255,255,0.08); }
+.dpbtn.active { background: #88C440; color: #000; border-color: #88C440; font-weight: 600; }
+
+</style>
+</head>
+<body>
+
+<!-- ================================================================
+     WEBDOOR
+     ================================================================ -->
+<section class="webdoor" aria-label="Webdoor GranBio">
+
+  <!-- CAMADA 1: Degradê de cor -->
+  <div class="webdoor__gradient-bg"></div>
+
+  <!-- CAMADA 2: Vídeo
+       ─────────────────────────────────────────────────────────
+       INSERIR VÍDEO: troque o src do <source> pelo caminho
+       do seu arquivo. Exemplo: src="videos/webdoor.mp4"
+       ───────────────────────────────────────────────────────── -->
+  <video class="webdoor__video" autoplay muted loop playsinline>
+    <source src="assets/video.mp4" type="video/mp4">
+    <!-- fallback de demonstração (remover em produção): -->
+    <!-- <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4" type="video/mp4"> -->
+  </video>
+
+  <!-- CAMADA 3: Shadows -->
+  <div class="webdoor__shadow"></div>
+
+  <!-- CAMADA 4: Grafismo SVG
+       ─────────────────────────────────────────────────────────
+       viewBox="0 0 1440 736" = dimensões originais do Figma.
+       preserveAspectRatio="none" = estica horizontalmente para
+       cobrir 100% da viewport sem deformar a curvatura do arco.
+       O path é o exato do arco-granbio.svg enviado.
+       ───────────────────────────────────────────────────────── -->
+  <div class="webdoor__graphic" aria-hidden="true">
+    <svg
+      viewBox="0 0 1440 736"
+      preserveAspectRatio="none"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <defs>
+        <linearGradient id="arcGrad" x1="0" y1="367.76" x2="1440" y2="367.76" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#0089B2"/>
+          <stop offset="0.4711"   stop-color="#00B08D"/>
+          <stop offset="0.994265" stop-color="#88C440"/>
+        </linearGradient>
+      </defs>
+      <!-- Path exato extraído do arco-granbio.svg -->
+      <path
+        opacity="0.9"
+        d="M0 117.238C240.811 -0.184799 520.697 -32.0019 790.712 33.5918C988.03 81.4752 1171.23 180.281 1320.12 319.323C1363.47 359.758 1403.53 403.246 1440 449.305V735.525C1396.45 616.615 1331.29 505.749 1247.53 409.258C1127.21 270.465 972.177 165.566 799.539 105.938C534.826 14.434 247.155 33.4095 0 153.305V117.238Z"
+        fill="url(#arcGrad)"
+      />
+    </svg>
+  </div>
+
+  <!-- ── SLIDES ────────────────────────────────────────────────
+       Gradiente das setas dos controles — definido uma vez aqui,
+       reutilizado em todos os SVGs inline via id.
+  ─────────────────────────────────────────────────────────── -->
+  <svg width="0" height="0" style="position:absolute">
+    <defs>
+      <linearGradient id="ctrlGradL" x1="0" y1="7" x2="14" y2="7" gradientUnits="userSpaceOnUse">
+        <stop offset="0.0057"  stop-color="#88C440"/>
+        <stop offset="0.5289"  stop-color="#00B08D"/>
+        <stop offset="1"       stop-color="#0089B2"/>
+      </linearGradient>
+      <linearGradient id="ctrlGradR" x1="14" y1="7" x2="0" y2="7" gradientUnits="userSpaceOnUse">
+        <stop offset="0.0057"  stop-color="#88C440"/>
+        <stop offset="0.5289"  stop-color="#00B08D"/>
+        <stop offset="1"       stop-color="#0089B2"/>
+      </linearGradient>
+    </defs>
+  </svg>
+
+  <!-- SLIDE 1 -->
+  <article class="webdoor__slide is-active" aria-label="Slide 1 de 3">
+    <span class="slide__tag">Purpose</span>
+    <h1 class="slide__title">
+      <span class="slide__title-gradient">From</span>
+      <span class="slide__title-gradient">biomass to</span>
+      <span class="slide__title-orange">breakthroughs.</span>
+    </h1>
+    <p class="slide__desc">
+      At GranBio, we harness the untapped potential of cellulosic biomass to create
+      sustainable bioproducts: biofuels, biochemicals, and beyond. Our work fuels
+      cleaner energy, empowers communities, and drives the circular economy forward.
+    </p>
+    <div class="slide__bottom">
+      <div class="slide__ctas">
+        <a href="#" class="btn">Products
+          <span class="btn__icon"><svg viewBox="0 0 20 20" fill="none"><path d="M5.05 14.95L14.95 5.05M14.95 5.05L5.248 4.852M14.95 5.05L15.148 14.752" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </a>
+        <a href="#" class="btn">Technology
+          <span class="btn__icon"><svg viewBox="0 0 20 20" fill="none"><path d="M5.05 14.95L14.95 5.05M14.95 5.05L5.248 4.852M14.95 5.05L15.148 14.752" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </a>
+        <a href="#" class="btn">Community Impact
+          <span class="btn__icon"><svg viewBox="0 0 20 20" fill="none"><path d="M5.05 14.95L14.95 5.05M14.95 5.05L5.248 4.852M14.95 5.05L15.148 14.752" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </a>
+      </div>
+      <div class="controls">
+        <button class="ctrl" aria-label="Slide anterior">
+          <svg viewBox="0 0 14 14" fill="none"><path d="M9.36 2L2.64 7L9.36 12" stroke="url(#ctrlGradL)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="ctrl" aria-label="Próximo slide">
+          <svg viewBox="0 0 14 14" fill="none"><path d="M4.64 2L11.36 7L4.64 12" stroke="url(#ctrlGradR)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </div>
+  </article>
+
+  <!-- SLIDE 2 -->
+  <article class="webdoor__slide" aria-label="Slide 2 de 3">
+    <span class="slide__tag">Technology</span>
+    <h1 class="slide__title">
+      <span class="slide__title-gradient">Turning waste</span>
+      <span class="slide__title-gradient">into clean</span>
+      <span class="slide__title-orange">energy.</span>
+    </h1>
+    <p class="slide__desc">
+      Our second-generation ethanol process converts agricultural residues into
+      high-performance biofuels, reducing carbon emissions and creating value
+      across the entire supply chain.
+    </p>
+    <div class="slide__bottom">
+      <div class="slide__ctas">
+        <a href="#" class="btn">Our Process
+          <span class="btn__icon"><svg viewBox="0 0 20 20" fill="none"><path d="M5.05 14.95L14.95 5.05M14.95 5.05L5.248 4.852M14.95 5.05L15.148 14.752" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </a>
+        <a href="#" class="btn">Research
+          <span class="btn__icon"><svg viewBox="0 0 20 20" fill="none"><path d="M5.05 14.95L14.95 5.05M14.95 5.05L5.248 4.852M14.95 5.05L15.148 14.752" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </a>
+        <a href="#" class="btn">Innovation
+          <span class="btn__icon"><svg viewBox="0 0 20 20" fill="none"><path d="M5.05 14.95L14.95 5.05M14.95 5.05L5.248 4.852M14.95 5.05L15.148 14.752" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </a>
+      </div>
+      <div class="controls">
+        <button class="ctrl" aria-label="Slide anterior">
+          <svg viewBox="0 0 14 14" fill="none"><path d="M9.36 2L2.64 7L9.36 12" stroke="url(#ctrlGradL)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="ctrl" aria-label="Próximo slide">
+          <svg viewBox="0 0 14 14" fill="none"><path d="M4.64 2L11.36 7L4.64 12" stroke="url(#ctrlGradR)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </div>
+  </article>
+
+  <!-- SLIDE 3 -->
+  <article class="webdoor__slide" aria-label="Slide 3 de 3">
+    <span class="slide__tag">Impact</span>
+    <h1 class="slide__title">
+      <span class="slide__title-gradient">Empowering</span>
+      <span class="slide__title-gradient">communities,</span>
+      <span class="slide__title-orange">growing future.</span>
+    </h1>
+    <p class="slide__desc">
+      Beyond fuel, GranBio's work creates jobs, supports rural development, and
+      builds sustainable supply chains that benefit people and the planet
+      for generations to come.
+    </p>
+    <div class="slide__bottom">
+      <div class="slide__ctas">
+        <a href="#" class="btn">Our Impact
+          <span class="btn__icon"><svg viewBox="0 0 20 20" fill="none"><path d="M5.05 14.95L14.95 5.05M14.95 5.05L5.248 4.852M14.95 5.05L15.148 14.752" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </a>
+        <a href="#" class="btn">Communities
+          <span class="btn__icon"><svg viewBox="0 0 20 20" fill="none"><path d="M5.05 14.95L14.95 5.05M14.95 5.05L5.248 4.852M14.95 5.05L15.148 14.752" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </a>
+        <a href="#" class="btn">Sustainability
+          <span class="btn__icon"><svg viewBox="0 0 20 20" fill="none"><path d="M5.05 14.95L14.95 5.05M14.95 5.05L5.248 4.852M14.95 5.05L15.148 14.752" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </a>
+      </div>
+      <div class="controls">
+        <button class="ctrl" aria-label="Slide anterior">
+          <svg viewBox="0 0 14 14" fill="none"><path d="M9.36 2L2.64 7L9.36 12" stroke="url(#ctrlGradL)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="ctrl" aria-label="Próximo slide">
+          <svg viewBox="0 0 14 14" fill="none"><path d="M4.64 2L11.36 7L4.64 12" stroke="url(#ctrlGradR)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </div>
+  </article>
+
+  <!-- SEEKBAR -->
+  <div class="seekbar" aria-hidden="true">
+    <div class="seekbar__col is-active" id="seek-0">
+      <div class="seekbar__track"></div>
+      <div class="seekbar__fill"></div>
+    </div>
+    <div class="seekbar__col is-pending" id="seek-1">
+      <div class="seekbar__track"></div>
+      <div class="seekbar__fill"></div>
+    </div>
+    <div class="seekbar__col is-pending" id="seek-2">
+      <div class="seekbar__track"></div>
+      <div class="seekbar__fill"></div>
+    </div>
+  </div>
+
+</section>
+
+
+<!-- ================================================================
+     PAINEL DEV — remover em produção
+     ================================================================ -->
+<div id="devpanel" style="
+  position:fixed; top:16px; right:16px; z-index:9999;
+  background:rgba(0,0,0,0.88); backdrop-filter:blur(12px);
+  border:1px solid rgba(255,255,255,0.12); padding:16px;
+  border-radius:12px; width:230px; color:#fff; font-size:12px;
+  font-family:-apple-system,sans-serif; line-height:1.4;
+">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <span style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;opacity:.5;font-weight:600;">Dev — Filtros</span>
+    <button onclick="this.closest('#devpanel').style.display='none'"
+      style="background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;font-size:16px;line-height:1;padding:0;">×</button>
+  </div>
+
+  <p style="font-size:10px;opacity:.5;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Blend mode do vídeo</p>
+  <div id="dev-modes" style="display:flex;flex-direction:column;gap:4px;margin-bottom:14px;">
+    <button data-mode="luminosity" class="dpbtn active">luminosity ← correto</button>
+    <button data-mode="multiply"   class="dpbtn">multiply</button>
+    <button data-mode="color"      class="dpbtn">color</button>
+    <button data-mode="overlay"    class="dpbtn">overlay</button>
+    <button data-mode="screen"     class="dpbtn">screen</button>
+    <button data-mode="normal"     class="dpbtn">normal (sem blend)</button>
+  </div>
+
+  <p style="font-size:10px;opacity:.5;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Cor do degradê</p>
+  <div id="dev-grads" style="display:flex;flex-direction:column;gap:4px;margin-bottom:14px;">
+    <button data-grad="brand"  class="dpbtn active">Brand — turquesa→verde</button>
+    <button data-grad="warm"   class="dpbtn">Warm — laranja→verde</button>
+    <button data-grad="blue"   class="dpbtn">Azul profundo</button>
+    <button data-grad="purple" class="dpbtn">Roxo</button>
+  </div>
+
+  <p style="font-size:10px;opacity:.5;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Grafismo</p>
+  <div id="dev-graphic" style="display:flex;gap:4px;">
+    <button data-graphic="on"  class="dpbtn active" style="flex:1;">Visível</button>
+    <button data-graphic="off" class="dpbtn"        style="flex:1;">Oculto</button>
+  </div>
+</div>
+
+
+<script>
+/* ================================================================
+   SLIDES + SEEKBAR
+   ================================================================ */
+const TOTAL       = 3;
+const DURATION_MS = 6000; /* hardcoded — funciona via file:// sem depender de getComputedStyle */
+
+const slides   = document.querySelectorAll('.webdoor__slide');
+const seekCols = document.querySelectorAll('.seekbar__col');
+
+let current = 0;
+let timer   = null;
+let paused  = false;
+
+function goTo(index) {
+  index = ((index % TOTAL) + TOTAL) % TOTAL;
+
+  slides.forEach((s, i) => s.classList.toggle('is-active', i === index));
+
+  seekCols.forEach((col, i) => {
+    col.classList.remove('is-active', 'is-done', 'is-pending');
+    const fill = col.querySelector('.seekbar__fill');
+
+    if (i < index) {
+      col.classList.add('is-done');
+    } else if (i === index) {
+      /* Reinicia o @keyframes: remove animação → reflow → re-adiciona */
+      fill.style.animation = 'none';
+      fill.offsetWidth;     /* força reflow */
+      fill.style.animation = '';
+      col.classList.add('is-active');
+    } else {
+      col.classList.add('is-pending');
+    }
+  });
+
+  current = index;
+}
+
+function startTimer() {
+  clearInterval(timer);
+  timer = setInterval(() => { if (!paused) goTo(current + 1); }, DURATION_MS);
+}
+
+function navigate(dir) {
+  goTo(current + dir);
+  startTimer();
+}
+
+document.querySelectorAll('[aria-label="Slide anterior"]').forEach(btn => {
+  btn.addEventListener('click', () => navigate(-1));
+});
+document.querySelectorAll('[aria-label="Próximo slide"]').forEach(btn => {
+  btn.addEventListener('click', () => navigate(1));
+});
+
+const webdoor = document.querySelector('.webdoor');
+webdoor.addEventListener('mouseenter', () => { paused = true;  });
+webdoor.addEventListener('mouseleave', () => { paused = false; });
+
+goTo(0);
+startTimer();
+
+
+/* ================================================================
+   PAINEL DEV
+   ================================================================ */
+const video   = document.querySelector('.webdoor__video');
+const gradBg  = document.querySelector('.webdoor__gradient-bg');
+const graphic = document.querySelector('.webdoor__graphic');
+
+const GRADS = {
+  brand:  'linear-gradient(115deg, #0089B2 0%, #00B08D 47%, #88C440 99%)',
+  warm:   'linear-gradient(115deg, #E7812E 0%, #00B08D 50%, #88C440 99%)',
+  blue:   'linear-gradient(115deg, #0a2540 0%, #215578 50%, #0089B2 99%)',
+  purple: 'linear-gradient(115deg, #4c1d95 0%, #7c3aed 50%, #0089B2 99%)',
+};
+
+function setActive(group, clicked) {
+  group.querySelectorAll('.dpbtn').forEach(b => b.classList.remove('active'));
+  clicked.classList.add('active');
+}
+
+document.getElementById('dev-modes').addEventListener('click', e => {
+  const btn = e.target.closest('[data-mode]');
+  if (!btn) return;
+  setActive(e.currentTarget, btn);
+  video.style.mixBlendMode = btn.dataset.mode;
+});
+
+document.getElementById('dev-grads').addEventListener('click', e => {
+  const btn = e.target.closest('[data-grad]');
+  if (!btn) return;
+  setActive(e.currentTarget, btn);
+  gradBg.style.background = GRADS[btn.dataset.grad];
+});
+
+document.getElementById('dev-graphic').addEventListener('click', e => {
+  const btn = e.target.closest('[data-graphic]');
+  if (!btn) return;
+  setActive(e.currentTarget, btn);
+  graphic.style.opacity = btn.dataset.graphic === 'on' ? '1' : '0';
+});
+</script>
+
+</body>
+</html>
